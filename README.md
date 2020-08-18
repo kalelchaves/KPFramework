@@ -32,11 +32,7 @@ class classes.beta.model.Person inherits Model:
     constructor public Person():
         super(buffer pessoa-fisica:handle).
         this-object:className = "classes.beta.model.Person".        
-    end constructor.
-
-    method public classes.beta.model.Person extent get():
-        return dynamic-cast(super:getData(), this-object:className).
-    end method.        
+    end constructor.       
 
     define property id-pessoa-old as integer get. set.
     define property nm-pessoa as character get. set.
@@ -160,7 +156,7 @@ oPerson:find().
 ```
 
 #### Queries
-Abaixo segue forma de consulta para mais de um registro.
+Abaixo segue forma de consulta para mais de um registro, no caso temos uma classe **Beneficiary** mepeada um para muitos com a classe **Cards** e um para um com **Person**.
 
 ##### And e AndGroup
 ```
@@ -181,7 +177,11 @@ oBenef
 
 do while(oBenef:getNext() <> ?):
 
-          //código
+        oBenef:person():nm-pessoa.
+
+        do while(oBenef:cards():getNext() <> ?):
+        
+        end.
 
 end.
 ```
@@ -195,4 +195,115 @@ oBenef
     :and("cd-sit-usuario", "<=", "7")
     :groupClose().
 ```
+A mesma sintaxe serve para `or` sendo `:orGroup()` e `:groupClose()`.
 
+#### toJson()
+Para serializar uma classe para json basta você definir a propriedade **jsonSerializeModel** contido dentro da classe Model. A partir dessa definição você poderá utilizar o método `:toJson()` para transformar as informações da classe em um object do tipo `Progress.Json.ObjectModel.JsonObject`.
+
+Abaixo vemos um exemplo da classe Beneficiary.
+```
+using Progress.Json.ObjectModel.*.
+using classes.beta.model.*.
+
+class classes.beta.model.Beneficiary inherits Model:   
+
+    constructor public Beneficiary():
+        super(buffer usuario:handle).
+        this-object:className = "classes.beta.model.Beneficiary".        
+
+        this-object:jsonSerializeModel = new JsonObject().
+        this-object:jsonSerializeModel:add("cd-modalidade", "modality").
+        this-object:jsonSerializeModel:add("nr-proposta", "proposal").
+        this-object:jsonSerializeModel:add("cd-usuario", "code").
+        this-object:jsonSerializeModel:add("nm-usuario", "name").
+        this-object:jsonSerializeModel:add("cd-cpf", "taxPayerRegistryNumber").
+    end constructor. 
+end class.
+```
+Utilizando durante a codificação.
+```
+using classes.beta.model.*.
+using Progress.Json.ObjectModel.*.
+using OpenEdge.Core.String.
+using Progress.Lang.*.
+
+def variable oBenef as Beneficiary no-undo.
+
+oBenef = new Beneficiary().
+oBenef:cd-modalidade = 20.
+oBenef:nr-proposta = 7626.
+oBenef:cd-usuario = 1.
+oBenef:toJson().
+```
+
+
+#### Save
+Para persistir as informações no banco de dados, basta realizar a consulta necessária com a classe e quando a consulta for realizada basta chamar o método `save()`, que irá persistir todas as informações carregadas na classe para o banco de dados.
+
+Abaixo segue um exemplo com **find** e consultando no formato de **query**.
+```
+using classes.beta.model.*.
+using Progress.Json.ObjectModel.*.
+using OpenEdge.Core.String.
+using Progress.Lang.*.
+
+define variable oPerson as Person no-undo.
+
+oPerson = new Person().
+oPerson:id-pessoa = 250.
+oPerson:find().
+```
+
+#### Queries
+Abaixo segue forma de consulta para mais de um registro, no caso temos uma classe **Beneficiary** mepeada um para muitos com a classe **Cards** e um para um com **Person**.
+
+##### And e AndGroup
+```
+using classes.beta.model.*.
+using Progress.Json.ObjectModel.*.
+using OpenEdge.Core.String.
+using Progress.Lang.*.
+
+def variable oBenef as Beneficiary no-undo.
+
+oBenef = new Beneficiary().
+oBenef:cd-modalidade = 20.
+oBenef:nr-proposta = 7626.
+oBenef:cd-usuario = 1.
+oBenef:find().
+
+oBenef:nm-usuario = "Teste beneficiario".
+oBenef:save().
+```
+***
+```
+using classes.beta.model.*.
+using Progress.Json.ObjectModel.*.
+using OpenEdge.Core.String.
+using Progress.Lang.*.
+
+def variable oBenef as Beneficiary no-undo.
+
+oBenef = new Beneficiary().
+
+oBenef
+    :and("cd-modalidade", "=", "20")
+    :and("nr-proposta", "=", "22110")
+    :and("cd-sit-usuario", ">=", "5")
+    :and("cd-sit-usuario", "<=", "7").
+
+do while(oBenef:getNext() <> ?):
+        
+        oBenef:nm-usuario = "Nome Beneficiario Teste".
+        oBenef:save().
+        
+        oBenef:person():nm-pessoa = "Nome Pessoa Teste".
+        oBenef:person():save().
+
+        do while(oBenef:cards():getNext() <> ?):
+                    oBenef:cards():cd-carteira-inteira = oBenef:cards():cd-carteira-inteira + "Alterada".
+                    oBenef:cards():save().
+        end.
+
+end.
+```
